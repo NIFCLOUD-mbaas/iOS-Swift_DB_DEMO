@@ -15,10 +15,10 @@
 
 ## 動作環境
 
-* Mac OS 10.15(Catalina)
-* Xcode ver. 12.0
-* Simulator ver.12.0
-* iPhone11 (iOS14.0)
+* Mac OS 11.5.2(Big Sur)
+* Xcode ver. 13.2.1
+* Simulator 13 Pro Max
+* iPhone 11 Pro Max (iOS15.2.1)
  
 ※上記内容で動作確認をしています。
 
