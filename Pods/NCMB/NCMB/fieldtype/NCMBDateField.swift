@@ -1,5 +1,5 @@
 /*
- Copyright 2019 FUJITSU CLOUD TECHNOLOGIES LIMITED All Rights Reserved.
+ Copyright 2019-2023 FUJITSU CLOUD TECHNOLOGIES LIMITED All Rights Reserved.
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ public struct NCMBDateField {
     /// 日時です。
     public var date : Date
 
-    /// コンストラクタです。
+    /// イニシャライズです。
     ///
     /// - Parameter date: 日時
     public init(date: Date) {

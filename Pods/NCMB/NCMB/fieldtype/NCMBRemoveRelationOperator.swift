@@ -1,5 +1,5 @@
 /*
- Copyright 2019 FUJITSU CLOUD TECHNOLOGIES LIMITED All Rights Reserved.
+ Copyright 2019-2023 FUJITSU CLOUD TECHNOLOGIES LIMITED All Rights Reserved.
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ public struct NCMBRemoveRelationOperator {
     /// フィールドからの削除対象の要素配列を定義
     public var elements : [NCMBPointer]
 
-    /// コンストラクタです。
+    /// イニシャライズです。
     ///
     /// - Parameter elements: フィールドからの削除対象の要素配列。ポインタの配列
     public init(elements: [NCMBPointer] = []) {

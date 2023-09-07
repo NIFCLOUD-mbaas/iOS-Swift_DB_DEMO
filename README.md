@@ -15,9 +15,9 @@
 
 ## 動作環境
 
-* Mac OS 12.5.1 (Monterey)
-* Xcode Version 14.0
-* iPhone X (iOS 16)
+* Mac OS 13.4.1 (Ventura)
+* Xcode Version 15.0
+* iPhone X (iOS 17)
  
 ※上記内容で動作確認をしています。
 

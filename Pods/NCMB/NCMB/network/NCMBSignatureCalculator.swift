@@ -1,5 +1,5 @@
 /*
- Copyright 2019 FUJITSU CLOUD TECHNOLOGIES LIMITED All Rights Reserved.
+ Copyright 2019-2023 FUJITSU CLOUD TECHNOLOGIES LIMITED All Rights Reserved.
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 import Foundation
 
-#if os(OSX) || os(iOS)
+#if canImport(CommonCrypto)
     import CommonCrypto
 #else
     import CryptoSwift
@@ -107,7 +107,7 @@ class NCMBSignatureCalculator {
         return array.joined(separator: "&")
     }
 
-    #if os(OSX) || os(iOS)
+    #if canImport(CommonCrypto)
 
     class func calculateSignature(plaintext: String, clientKey: String) throws -> String {
         guard let bytes = plaintext.cString(using: .utf8) else {
@@ -127,7 +127,7 @@ class NCMBSignatureCalculator {
         return hmac.base64EncodedString()
     }
 
-    #elseif os(Linux)
+    #else
 
     class func calculateSignature(plaintext: String, clientKey: String) throws -> String {
         let bytes : [UInt8] = Array(plaintext.utf8)

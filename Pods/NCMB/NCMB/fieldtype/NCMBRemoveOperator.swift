@@ -1,5 +1,5 @@
 /*
- Copyright 2019 FUJITSU CLOUD TECHNOLOGIES LIMITED All Rights Reserved.
+ Copyright 2019-2023 FUJITSU CLOUD TECHNOLOGIES LIMITED All Rights Reserved.
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ public struct NCMBRemoveOperator {
     /// フィールドへの削除対象の要素配列です。
     public var elements : [Any?]
 
-    /// コンストラクタです。
+    /// イニシャライズです。
     ///
     /// - Parameter elements: フィールドへの削除対象の要素配列
     public init(elements: [Any?] = []) {

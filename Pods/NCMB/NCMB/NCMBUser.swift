@@ -1,5 +1,5 @@
 /*
- Copyright 2019 FUJITSU CLOUD TECHNOLOGIES LIMITED All Rights Reserved.
+ Copyright 2019-2023 FUJITSU CLOUD TECHNOLOGIES LIMITED All Rights Reserved.
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -31,13 +31,13 @@ public class NCMBUser : NCMBBase {
     static var _currentUser : NCMBUser? = nil
     private static var isEnableAutomaticUser : Bool = false
 
-    /// コンストラクタです。
+    /// イニシャライズです。
     public init() {
         super.init(className: NCMBUser.CLASSNAME)
     }
 
-    /// コンストラクタです。
-    /// このコンストラクタは変更フィールドを正しく把握するためにモジュール外での利用は許可しません。
+    /// イニシャライズです。
+    /// このイニシャライズは変更フィールドを正しく把握するためにモジュール外での利用は許可しません。
     ///
     /// - Parameter className: データストアのクラス名
     /// - Parameter fields: フィールド内容
@@ -325,16 +325,10 @@ public class NCMBUser : NCMBBase {
             mailAddress: String?,
             password: String,
             callback: @escaping NCMBHandler<Void>) -> Void {
-        var queryItems : [String : String?] = [:]
-        if let userName : String = userName {
-            queryItems[FIELDNAME_USER_NAME] = userName
-        }
-        if let mailAddress : String = mailAddress {
-            queryItems[FIELDNAME_MAIL_ADDRESS] = mailAddress
-        }
-        queryItems[FIELDNAME_PASSWORD] = password
         NCMBLoginService().logIn(
-                queryItems: queryItems,
+                userName: userName,
+                mailAddress: mailAddress,
+                password: password,
                 callback: {(result: NCMBResult<NCMBResponse>) -> Void in
             switch result {
                 case let .success(response):
@@ -378,6 +372,12 @@ public class NCMBUser : NCMBBase {
                     callback(NCMBResult<Void>.success(()))
                     break
                 case let .failure(error):
+                    if let apiErr = error as? NCMBApiError {
+                        if apiErr.errorCode == .authenticationErrorByHeaderIncorrect || apiErr.errorCode == .noDataAvailable {
+                            deleteFile()
+                            _currentUser = nil
+                        }
+                    }
                     callback(NCMBResult<Void>.failure(error))
                     break
             }
@@ -473,13 +473,9 @@ public class NCMBUser : NCMBBase {
     ///
     /// - Parameter callback: レスポンス取得後に実行されるコールバックです。
     public func saveInBackground(callback: @escaping NCMBHandler<Void> ) -> Void {
-        if self.objectId == nil {
-            callback(NCMBResult<Void>.failure(NCMBInvalidRequestError.emptyObjectId))
-            return;
-        }
         // セッショントークンを削除したユーザーを用意
         let tmpuser = self.removeSessionToken()
-        NCMBInstallationService().save(object: tmpuser, callback: {(result: NCMBResult<NCMBResponse>) -> Void in
+        NCMBUserService().save(object: tmpuser, callback: {(result: NCMBResult<NCMBResponse>) -> Void in
             switch result {
                 case let .success(response):
                     self.reflectResponse(response: response)
@@ -520,6 +516,7 @@ public class NCMBUser : NCMBBase {
                 case .success(_):
                     if self.isCurrentUser() {
                         NCMBUser.deleteFile()
+                        NCMBUser._currentUser = nil
                     }
                     self.removeAllFields()
                     self.removeAllModifiedFieldKeys()
@@ -595,4 +592,179 @@ public class NCMBUser : NCMBBase {
         return tmpuser
     }
 
+    /// twitterのauthDataをもとにニフクラ mobile backendへの会員登録(ログイン)を行う
+    ///
+    /// - Parameter twitterParameters: NCMBTwitterParameters
+    /// - Parameter callback: レスポンス取得後に実行されるコールバックです。
+    public func signUpWithTwitterToken(twitterParameters: NCMBTwitterParameters, callback: @escaping NCMBHandler<Void> ) -> Void {
+            let twitterInfo: [String: Any] = [
+                twitterParameters.type.rawValue: twitterParameters.toObject()
+            ]
+            signUpWithToken(snsInfo: twitterInfo, callback: callback)
+    }
+    
+    /// facebookのauthDataをもとにニフクラ mobile backendへの会員登録(ログイン)を行う
+    ///
+    /// - Parameter facebookParameters: NCMBFacebookParameters
+    /// - Parameter callback: レスポンス取得後に実行されるコールバックです。
+    public func signUpWithFacebookToken(facebookParameters:
+        NCMBFacebookParameters, callback: @escaping NCMBHandler<Void> )
+        -> Void {
+        let facebookInfo: [String: Any] = [
+            facebookParameters.type.rawValue: facebookParameters.toObject(),
+        ]
+        signUpWithToken(snsInfo: facebookInfo, callback: callback)
+    }
+    
+    /// appleのauthDataをもとにニフクラ mobile backendへの会員登録(ログイン)を行う
+    ///
+    /// - Parameter appleParameters: NCMBAppleParameters
+    /// - Parameter callback: レスポンス取得後に実行されるコールバックです。
+    public func signUpWithAppleToken(appleParameters: NCMBAppleParameters, callback: @escaping NCMBHandler<Void> ) -> Void {
+        let appleInfo: [String: Any] = [
+            appleParameters.type.rawValue: appleParameters.toObject(),
+        ]
+        signUpWithToken(snsInfo: appleInfo, callback: callback)
+    }
+    
+    /// typeで指定したsns情報のauthDataをもとにニフクラ mobile backendへの会員登録(ログイン)を行う
+    ///
+    /// - Parameter snsInfo: snsの認証に必要なauthData
+    /// - Parameter callback: レスポンス取得後に実行されるコールバックです。
+    public func signUpWithToken(snsInfo: [String: Any], callback: @escaping NCMBHandler<Void> ) -> Void {
+        let localAuthData = self.authData
+        self.authData = snsInfo
+        if localAuthData != nil {
+            let localAuthDataDictionary = NSMutableDictionary(dictionary: localAuthData!)
+            localAuthDataDictionary.addEntries(from: self.authData!)
+            self.authData = localAuthDataDictionary as? [String:Any]
+        }
+        self.signUpInBackground(callback: {result in
+            switch result {
+            case .success :
+                // processing when saving is successful
+                callback(NCMBResult<Void>.success(()))
+            case  let .failure (error) :
+                // Process when save fails
+                self.authData = localAuthData
+                callback(NCMBResult<Void>.failure(error))
+            }
+        })
+    }
+
+    /// ログイン中のユーザー情報に、Twitterの認証情報を紐付ける
+    ///
+    /// - Parameter twitterParameters: NCMBTwitterParameters
+    /// - Parameter callback: レスポンス取得後に実行されるコールバックです。
+    public func linkWithTwitterToken(twitterParameters: NCMBTwitterParameters, callback: @escaping NCMBHandler<Void> ) -> Void {
+            let twitterInfo: [String: Any] = [
+                twitterParameters.type.rawValue: twitterParameters.toObject()
+            ]
+            linkWithToken(snsInfo: twitterInfo, callback: callback)
+    }
+    
+    /// ログイン中のユーザー情報に、Facebookの認証情報を紐付ける
+    ///
+    /// - Parameter FacebookParameters: NCMBFacebookParameters
+    /// - Parameter callback: レスポンス取得後に実行されるコールバックです。
+    public func linkWithFacebookToken(facebookParameters: NCMBFacebookParameters, callback: @escaping NCMBHandler<Void> ) -> Void {
+        let facebookInfo: [String: Any] = [
+            facebookParameters.type.rawValue: facebookParameters.toObject(),
+        ]
+        linkWithToken(snsInfo: facebookInfo, callback: callback)
+    }
+    
+    /// ログイン中のユーザー情報に、Appleの認証情報を紐付ける
+    ///
+    /// - Parameter appleParameters: NCMBAppleParameters
+    /// - Parameter callback: レスポンス取得後に実行されるコールバックです。
+    public func linkWithAppleToken(appleParameters: NCMBAppleParameters, callback: @escaping NCMBHandler<Void> ) -> Void {
+        let appleInfo: [String: Any] = [
+            appleParameters.type.rawValue: appleParameters.toObject(),
+        ]
+        linkWithToken(snsInfo: appleInfo, callback: callback)
+    }
+    
+    /// ログイン中のユーザー情報に、snsの認証情報を紐付ける
+    ///
+    /// - Parameter snsInfo: NSMutableDictionary
+    /// - Parameter callback: レスポンス取得後に実行されるコールバックです。
+    public func linkWithToken(snsInfo: [String: Any], callback: @escaping NCMBHandler<Void>) -> Void {
+        var localAuthData: [String : Any]? = nil
+        localAuthData = self.authData
+        
+        self.authData = snsInfo
+        self.saveInBackground { result in
+            switch result {
+            case .success :
+                // processing when saving is successful
+                // Merge user object
+                if localAuthData != nil {
+                    let localAuthDataDictionary = NSMutableDictionary(dictionary: localAuthData!)
+                    localAuthDataDictionary.addEntries(from: self.authData!)
+                    self.authData = localAuthDataDictionary as? [String:Any]
+                }
+                callback(NCMBResult<Void>.success(()))
+            case  let .failure (error) :
+                // Process when save fails
+                self.authData = localAuthData
+                callback(NCMBResult<Void>.failure(error))
+            }
+        }
+    }
+    
+    /// 会員情報に、引数で指定したtypeの認証情報が含まれているか確認する
+    ///
+    /// - Parameter type: 認証情報のtype（googleもしくはtwitter、facebook、apple）
+    /// - Returns: bool
+    public func isLinkedWith(type:String) -> Bool {
+        var isLinkerFlag:Bool = false
+        if (type == NCMBSNSType.facebook.rawValue
+            || type == NCMBSNSType.twitter.rawValue
+            || type == NCMBSNSType.google.rawValue
+            || type == NCMBSNSType.apple.rawValue) {
+            if self.authData != nil {
+                for (key, _) in self.authData! {
+                    if key == type {
+                        isLinkerFlag = true
+                    }
+                }
+            }
+        }
+        return isLinkerFlag
+    }
+    
+    /// 会員情報から、引数で指定したtypeの認証情報を削除する
+    ///
+    /// - Parameter type: 認証情報のtype（googleもしくはtwitter、facebook、apple）
+    /// - Parameter callback: レスポンス取得後に実行されるコールバックです。
+    public func unlink(type:String, callback: @escaping NCMBHandler<Void>) -> Void {
+        if self.authData != nil {
+            if self.isLinkedWith(type: type) {
+                let localAuthData = self.authData
+                self.authData = [
+                    type: NSNull(),
+                ]
+                self.saveInBackground { result in
+                    switch result {
+                    case .success :
+                        // processing when saving is successful
+                        self.authData?.removeValue(forKey: type)
+                        callback(NCMBResult<Void>.success(()))
+                    case  let .failure (error) :
+                        // Process when save fails
+                        self.authData = localAuthData
+                        callback(NCMBResult<Void>.failure(error))
+                    }
+                }
+            } else {
+                let error = NSError(domain: "NCMBErrorDomain", code: 404003, userInfo: [NSLocalizedDescriptionKey : "other token type"])
+                callback(NCMBResult<Void>.failure(error))
+            }
+        } else {
+            let error = NSError(domain: "NCMBErrorDomain", code: 404003, userInfo: [NSLocalizedDescriptionKey : "token not found"])
+            callback(NCMBResult<Void>.failure(error))
+            
+        }
+    }
 }

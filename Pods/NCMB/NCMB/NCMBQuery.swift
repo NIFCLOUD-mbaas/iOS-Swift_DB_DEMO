@@ -1,5 +1,5 @@
 /*
- Copyright 2019 FUJITSU CLOUD TECHNOLOGIES LIMITED All Rights Reserved.
+ Copyright 2019-2023 FUJITSU CLOUD TECHNOLOGIES LIMITED All Rights Reserved.
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ public struct NCMBQuery<T : NCMBBase> {
     var isCount : Bool = false
 
     /// オブジェクト取得時の並び順です。
+    /// フィールド名（文字列）の配列として設定し、降順の場合はフィールド名の先頭に"-"（マイナス）をつけてください。
     public var order : [String] = []
 
     /// オブジェクト取得時の開始位置です。
@@ -106,13 +107,40 @@ public struct NCMBQuery<T : NCMBBase> {
         self.service = NCMBObjectService()
     }
 
-    /// コンストラクタです。
+    /// イニシャライズです。
     /// 指定されたサービスに対応する検索条件クラスを生成します。
     ///
     /// - Parameter service: 検索リクエスト時に使用するサービス
     init(service: NCMBRequestServiceProtocol) {
         self.className = ""
         self.service = service
+    }
+
+    /// イニシャライズです。
+    /// 指定されたサービスに対応する検索条件クラスを生成します。
+    ///
+    /// - Parameters:
+    ///   - className: クラス名
+    ///   - service: 検索リクエスト時に使用するサービス
+    ///   - whereItems: 検索条件
+    ///   - isCount: true のときカウントを行う
+    ///   - order: 結果のソート順
+    ///   - skip: 検索開始位置
+    ///   - limit: 取得件数の上限
+    init(className: String,
+        service: NCMBRequestServiceProtocol,
+        whereItems: [String : Any] = [:],
+        isCount: Bool = false,
+        order: [String] = [],
+        skip: Int? = nil,
+        limit: Int? = nil) {
+        self.className = className
+        self.service = service
+        self.whereItems = whereItems
+        self.isCount = isCount
+        self.order = order
+        self.skip = skip
+        self.limit = limit
     }
 
     /// 検索を同期処理にて行います。
@@ -373,12 +401,103 @@ public struct NCMBQuery<T : NCMBBase> {
         query.whereItems = [NCMBQueryConstants.OPERATOR_OR:items]
         return query
     }
-
-
+    
+    /// 「第一引数は親クエリにおけるキー、第二引数はサブクエリ（第三引数）におけるキーとし、親とサブクエリで得られた値の中で一致するものを検索」という検索条件を設定。
+    ///
+    /// - Parameter field: 対象のフィールド名
+    /// - Parameter otherKey サブクエリ（第三引数）におけるキー
+    /// - Parameter query サブクエリ
+    public mutating func `where`(field: String, matchesKey otherKey: String, inQuery query: NCMBQuery) {
+        var item = query.query
+        item[NCMBQueryConstants.REQUEST_PARAMETER_CLASSNAME] = query.className
+        let select : [String : Any] = [NCMBQueryConstants.REQUEST_PARAMETER_KEY: otherKey,
+                                       NCMBQueryConstants.REQUEST_PARAMETER_QUERY: item]
+        self.addOperation(field: field, operation: NCMBQueryConstants.OPERATOR_SELECT, value: select)
+    }
+    
+    /// 「サブクエリ（第二引数）で取得できるオブジェクトの内、親クエリに指定したキー（第一引数）の値(オブジェクト)と一致するものを検索」という検索条件を設定
+    ///
+    /// - Parameter field: 対象のフィールド名
+    /// - Parameter query 検索条件に使用するクエリ
+    public mutating func `where`(field: String, matchesQuery query: NCMBQuery) {
+        var inQuery = query.query
+        inQuery[NCMBQueryConstants.REQUEST_PARAMETER_CLASSNAME] = query.className
+        self.addOperation(field: field, operation: NCMBQueryConstants.OPERATOR_INQUERY, value: inQuery)
+    }
+    
+    /// 指定されたオブジェクトのリレーション先オブジェクトを検索する
+    ///
+    /// - Parameter targetClassName リレーション元のクラス名
+    /// - Parameter objectId リレーション元のオブジェクトID
+    /// - Parameter key リレーション元オブジェクトでリレーションが設定されているフィールド名
+    public mutating func relatedTo(targetClassName: String, objectId: String, key: String) {
+        let value : [String : Any] = ["object" : ["__type" : "Pointer",
+                                      "className" : targetClassName,
+                                      "objectId" : objectId],
+                                      "key" : key]
+        self.whereItems[NCMBQueryConstants.OPERATOR_RELATEDTO] = value
+    }
+    
+    /// 指定位置から近い順にオブジェクトを取得。
+    /// 取得件数はlimit依存。
+    ///
+    /// - Parameter field: 対象のフィールド名
+    /// - Parameter geoPoint 位置情報
+    public mutating func `where`(field: String, nearGeoPoint geoPoint: NCMBGeoPoint) {
+        self.addOperation(field: field, operation: NCMBQueryConstants.OPERATOR_NEARSPHERE, value: geoPoint)
+    }
+    
+    /// 指定位置から近い順に、指定距離までの範囲に含まれるオブジェクトを取得。
+    /// 取得件数はlimit依存。
+    ///
+    /// - Parameter field: 対象のフィールド名
+    /// - Parameter geoPoint 位置情報
+    /// - Parameter maxDistance 検索範囲
+    public mutating func `where`(field: String, nearGeoPoint geoPoint: NCMBGeoPoint, withinKilometers maxDistance: Double) {
+        self.addOperation(field: field, operation: NCMBQueryConstants.OPERATOR_NEARSPHERE, value: geoPoint)
+        self.addOperation(field: field, operation: NCMBQueryConstants.OPERATOR_MAXDISTANCEINKILOMETERS, value: maxDistance)
+    }
+    
+    /// 指定位置から近い順に、指定距離までの範囲に含まれるオブジェクトを取得。取得件数はlimit依存。
+    ///
+    /// - Parameter field: 対象のフィールド名
+    /// - Parameter geoPoint 位置情報
+    /// - Parameter maxDistance 検索範囲
+    public mutating func `where`(field: String, nearGeoPoint geoPoint: NCMBGeoPoint, withinMiles maxDistance: Double) {
+        self.addOperation(field: field, operation: NCMBQueryConstants.OPERATOR_NEARSPHERE, value: geoPoint)
+        self.addOperation(field: field, operation: NCMBQueryConstants.OPERATOR_MAXDISTANCEINMILES, value: maxDistance)
+    }
+    
+    /// 指定位置から近い順に、指定距離までの範囲に含まれるオブジェクトを取得。
+    /// 取得件数はlimit依存。
+    ///
+    /// - Parameter field: 対象のフィールド名
+    /// - Parameter geoPoint 位置情報
+    /// - Parameter maxDistance 検索範囲
+    public mutating func `where`(field: String, nearGeoPoint geoPoint: NCMBGeoPoint, withinRadians maxDistance: Double) {
+        self.addOperation(field: field, operation: NCMBQueryConstants.OPERATOR_NEARSPHERE, value: geoPoint)
+        self.addOperation(field: field, operation: NCMBQueryConstants.OPERATOR_MAXDISTANCEINRADIANS, value: maxDistance)
+    }
+    
+    /// 指定された短形範囲に含まれるオブジェクトを取得。
+    /// 短形は、左下（南西）と右上（北東）を指定する。
+    /// ソートは通常検索に準拠。
+    /// 件数はlimit依存。
+    ///
+    /// - Parameter field: 対象のフィールド名
+    /// - Parameter southwest 南西座標
+    /// - Parameter northeast 北東座標
+    public mutating func `where`(field: String, withinGeoBoxFromSouthwest southwest: NCMBGeoPoint, toNortheast northeast: NCMBGeoPoint) {
+        let box = ["$box": [southwest.toObject(), northeast.toObject()]]
+        self.addOperation(field: field, operation: NCMBQueryConstants.OPERATOR_WITHIN, value: box)
+    }
 }
 
 /// NCMBQueryで使用するコンスタント値を管理するクラスです。
 private class NCMBQueryConstants {
+    static let REQUEST_PARAMETER_CLASSNAME : String = "className"
+    static let REQUEST_PARAMETER_QUERY : String = "query"
+    static let REQUEST_PARAMETER_KEY : String = "key"
     static let REQUEST_PARAMETER_WHERE : String = "where"
     static let REQUEST_PARAMETER_ORDER : String = "order"
     static let REQUEST_PARAMETER_SKIP : String = "skip"
@@ -399,4 +518,13 @@ private class NCMBQueryConstants {
     static let OPERATOR_NINARRAY : String = "$ninArray"
     static let OPERATOR_ALL : String = "$all"
     static let OPERATOR_OR : String = "$or"
+    static let OPERATOR_SELECT : String = "$select"
+    static let OPERATOR_INQUERY : String = "$inQuery"
+    static let OPERATOR_RELATEDTO : String = "$relatedTo"
+    static let OPERATOR_NEARSPHERE : String = "$nearSphere"
+    static let OPERATOR_WITHIN : String = "$within"
+    static let OPERATOR_BOX : String = "$box"
+    static let OPERATOR_MAXDISTANCEINKILOMETERS : String = "$maxDistanceInKilometers"
+    static let OPERATOR_MAXDISTANCEINMILES : String = "$maxDistanceInMiles"
+    static let OPERATOR_MAXDISTANCEINRADIANS : String = "$maxDistanceInRadians"
 }

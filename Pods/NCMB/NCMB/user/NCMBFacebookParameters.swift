@@ -1,5 +1,5 @@
 /*
- Copyright 2019 FUJITSU CLOUD TECHNOLOGIES LIMITED All Rights Reserved.
+ Copyright 2019-2023 FUJITSU CLOUD TECHNOLOGIES LIMITED All Rights Reserved.
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ public struct NCMBFacebookParameters : NCMBSnsInfoProtocol {
     /// トークン有効期限です。
     public var expirationDate : Date
 
-    /// コンストラクタです。
+    /// イニシャライズです。
     ///
     /// - Parameter id: Facebook ID
     /// - Parameter accessToken: アクセストークン
@@ -51,9 +51,13 @@ public struct NCMBFacebookParameters : NCMBSnsInfoProtocol {
 
     func toObject() -> [String : Any] {
         var object : [String : Any] = [:]
+        var dateObject : [String : Any] = [:]       
         object[NCMBFacebookParameters.PARAMETER_ID] = self.id
         object[NCMBFacebookParameters.PARAMETER_ACCESS_TOKEN] = self.accessToken
-        object[NCMBFacebookParameters.PARAMETER_EXPIRATION_DATE] = NCMBDateFormatter.getISO8601Timestamp(date: self.expirationDate)
+        dateObject["__type"] = "Date"
+        dateObject["iso"] =
+            NCMBDateFormatter.getISO8601Timestamp(date: self.expirationDate)
+        object[NCMBFacebookParameters.PARAMETER_EXPIRATION_DATE] = dateObject
         return object
     }
 
