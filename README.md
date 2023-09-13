@@ -17,7 +17,7 @@
 
 * Mac OS 13.4.1 (Ventura)
 * Xcode Version 15.0
-* iPhone X (iOS 17)
+* iPhone SE (iOS 17)
  
 ※上記内容で動作確認をしています。
 
