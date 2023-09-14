@@ -14,10 +14,19 @@
  limitations under the License.
  */
 
+//import Foundation
 
-/// パースエラーを表す列挙型です。
-public enum NCMBParseError : Error {
-    case unsupportJsonFormat
-    case unsupportResponseHeader
+/// プッシュ通知 配信期限時間の単位を表すための列挙型です。
+public enum NCMBExpirationTimeUnitType: String {
+    case hour = "hour"
+    case day = "day"
+    
+    init?(string: String) {
+        switch string {
+        case "hour": self = .hour
+        case "day": self = .day
+        default: return nil
+        }
+    }
 }
 

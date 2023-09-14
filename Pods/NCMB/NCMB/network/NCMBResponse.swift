@@ -1,5 +1,5 @@
 /*
- Copyright 2019 FUJITSU CLOUD TECHNOLOGIES LIMITED All Rights Reserved.
+ Copyright 2019-2023 FUJITSU CLOUD TECHNOLOGIES LIMITED All Rights Reserved.
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -15,6 +15,9 @@
  */
 
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 /// リクエストからの返却内容を保持する構造体です。
 public struct NCMBResponse {

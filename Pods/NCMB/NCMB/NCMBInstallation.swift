@@ -1,5 +1,5 @@
 /*
- Copyright 2019 FUJITSU CLOUD TECHNOLOGIES LIMITED All Rights Reserved.
+ Copyright 2019-2023 FUJITSU CLOUD TECHNOLOGIES LIMITED All Rights Reserved.
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -28,8 +28,8 @@ public class NCMBInstallation : NCMBBase {
     static let FIELDNAME_BADGE = "badge"
     static let FIELDNAME_CHANNELS = "channels"
 
-    /// コンストラクタです。
-    /// このコンストラクタは変更フィールドを正しく把握するためにモジュール外での利用は許可しません。
+    /// イニシャライズです。
+    /// このイニシャライズは変更フィールドを正しく把握するためにモジュール外での利用は許可しません。
     ///
     /// - Parameter className: データストアのクラス名
     /// - Parameter fields: フィールド内容
@@ -38,11 +38,11 @@ public class NCMBInstallation : NCMBBase {
         super.init(className: className, fields: fields, modifiedFieldKeys: modifiedFieldKeys)
     }
 
-    /// コンストラクタです。
+    /// イニシャライズです。
     public init() {
         super.init(className: NCMBInstallation.CLASSNAME)
         let channels : [String] = []
-        self[NCMBInstallation.FIELDNAME_DEVICE_TYPE] = NCMBDeviceSystem.osType
+        self[NCMBInstallation.FIELDNAME_DEVICE_TYPE] = NCMB.DEVICE_TYPE
         self[NCMBInstallation.FIELDNAME_APPLICATION_NAME] = NCMBInstallation.getApplicationName()
         self[NCMBInstallation.FIELDNAME_APP_VERSION] = NCMBInstallation.getAppVersion()
         self[NCMBInstallation.FIELDNAME_TIMEZONE] = NCMBInstallation.getTimeZone()
